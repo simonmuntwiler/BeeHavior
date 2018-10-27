@@ -1901,6 +1901,19 @@ void MulticopterPositionControl::control_auto()
 			matrix::Vector2f vec_prev_to_current((_curr_pos_sp(0) - _prev_pos_sp(0)), (_curr_pos_sp(1) - _prev_pos_sp(1)));
 			matrix::Vector2f vec_pos_to_current((_curr_pos_sp(0) - _pos(0)), (_curr_pos_sp(1) - _pos(1)));
 
+			/* compute vector from position-current and previous-position */
+			matrix::Vector2f vec_prev_to_pos((_pos(0) - _prev_pos_sp(0)), (_pos(1) - _prev_pos_sp(1)));
+
+			float dtot = vec_prev_to_current.length();
+			float d1 = vec_prev_to_pos.length();
+			// float d2 = vec_pos_to_current.lenght()
+
+			// addon for polyhack happy
+			float delta_z_polyhack = sinf(3.141529 * 2 * d1/dtot);
+			pos_sp(2) += delta_z_polyhack;
+
+			_pos_sp = pos_sp;
+			_pos_sp = pos_sp;
 
 			/* check if we just want to stay at current position */
 			matrix::Vector2f pos_sp_diff((_curr_pos_sp(0) - _pos_sp(0)), (_curr_pos_sp(1) - _pos_sp(1)));
@@ -1929,8 +1942,8 @@ void MulticopterPositionControl::control_auto()
 
 				matrix::Vector2f vec_closest_to_current((_curr_pos_sp(0) - closest_point(0)), (_curr_pos_sp(1) - closest_point(1)));
 
-				/* compute vector from position-current and previous-position */
-				matrix::Vector2f vec_prev_to_pos((_pos(0) - _prev_pos_sp(0)), (_pos(1) - _prev_pos_sp(1)));
+				// /* compute vector from position-current and previous-position */
+				// matrix::Vector2f vec_prev_to_pos((_pos(0) - _prev_pos_sp(0)), (_pos(1) - _prev_pos_sp(1)));
 
 				/* current velocity along track */
 				float vel_sp_along_track_prev = matrix::Vector2f(_vel_sp(0), _vel_sp(1)) * unit_prev_to_current;
@@ -2154,7 +2167,6 @@ void MulticopterPositionControl::control_auto()
 				}
 			}
 
-			_pos_sp = pos_sp;
 
 		} else if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_VELOCITY) {
 
