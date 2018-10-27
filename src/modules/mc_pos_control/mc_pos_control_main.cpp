@@ -1908,9 +1908,12 @@ void MulticopterPositionControl::control_auto()
 			float d1 = vec_prev_to_pos.length();
 			// float d2 = vec_pos_to_current.lenght()
 
+			float spiral_gain = 2;
+			float spiral_frequancy = 3;
 			// addon for polyhack happy
-			float delta_z_polyhack = sinf(3.141529 * 2 * d1 / dtot);
+			float delta_z_polyhack = spiral_gain * sinf(spiral_frequancy * 3.141529 * 2 * d1 / dtot);
 			pos_sp(2) += delta_z_polyhack;
+			// bla
 
 			_pos_sp = pos_sp;
 			_pos_sp = pos_sp;
@@ -2126,6 +2129,8 @@ void MulticopterPositionControl::control_auto()
 
 					pos_sp(0) = closest_point(0) + unit_prev_to_current(0) * vel_sp_along_track / _pos_p(0);
 					pos_sp(1) = closest_point(1) + unit_prev_to_current(1) * vel_sp_along_track / _pos_p(1);
+					// TODO: change here
+					pos_sp(1) += 10 * delta_z_polyhack;
 
 				} else if (current_behind) {
 					/* current is behind */
@@ -2159,6 +2164,7 @@ void MulticopterPositionControl::control_auto()
 					if (vec_pos_to_closest.length() > SIGMA_NORM) {
 						pos_sp(0) = _pos(0) + vec_pos_to_closest(0) / vec_pos_to_closest.length() * cruise_sp / _pos_p(0);
 						pos_sp(1) = _pos(1) + vec_pos_to_closest(1) / vec_pos_to_closest.length() * cruise_sp / _pos_p(1);
+						pos_sp(1) += 10 * delta_z_polyhack;
 
 					} else {
 						pos_sp(0) = closest_point(0);
