@@ -1909,7 +1909,7 @@ void MulticopterPositionControl::control_auto()
 			// float d2 = vec_pos_to_current.lenght()
 
 			// addon for polyhack happy
-			float delta_z_polyhack = sinf(3.141529 * 2 * d1/dtot);
+			float delta_z_polyhack = sinf(3.141529 * 2 * d1 / dtot);
 			pos_sp(2) += delta_z_polyhack;
 
 			_pos_sp = pos_sp;
