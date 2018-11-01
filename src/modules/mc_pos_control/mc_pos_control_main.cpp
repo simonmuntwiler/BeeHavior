@@ -1939,6 +1939,11 @@ void MulticopterPositionControl::control_auto()
 			_pos_sp = pos_sp;
 			_pos_sp = pos_sp;
 
+
+			if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
+				PX4_WARN("loitering");
+			}
+
 			/* check if we just want to stay at current position */
 			matrix::Vector2f pos_sp_diff((_curr_pos_sp(0) - _pos_sp(0)), (_curr_pos_sp(1) - _pos_sp(1)));
 			bool stay_at_current_pos = (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LOITER
@@ -2195,6 +2200,10 @@ void MulticopterPositionControl::control_auto()
 						pos_sp(0) = closest_point(0);
 						pos_sp(1) = closest_point(1);
 					}
+				}
+
+				if (_mood.get() == 2) {
+					pos_sp(1) += 1;
 				}
 			}
 
