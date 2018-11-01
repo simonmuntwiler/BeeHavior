@@ -1922,27 +1922,13 @@ void MulticopterPositionControl::control_auto()
 			/* compute vector from position-current and previous-position */
 			matrix::Vector2f vec_prev_to_pos((_pos(0) - _prev_pos_sp(0)), (_pos(1) - _prev_pos_sp(1)));
 
-
-
-			// float dtot = vec_prev_to_current.length();
-			// float d1 = vec_prev_to_pos.length();
-			// // float d2 = vec_pos_to_current.lenght()
-
-			// float spiral_gain = 2;
-			// float spiral_frequancy = 2;
-			// // addon for polyhack happy
-			// float delta_z_polyhack = spiral_gain * sinf(spiral_frequancy * 3.141529 * 2 * d1 / dtot);
-			// pos_sp(2) += delta_z_polyhack;
-			// bla
+			// Compute the altitude difference to be added to the trajectory
 			float delta_z_polyhack = beehavior(_mood.get(), vec_prev_to_current, vec_prev_to_pos, vec_pos_to_current);
+
+			// Add the altitude difference to the trajectory
 			pos_sp(2) += delta_z_polyhack;
 			_pos_sp = pos_sp;
-			_pos_sp = pos_sp;
 
-
-			if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
-				PX4_WARN("loitering");
-			}
 
 			/* check if we just want to stay at current position */
 			matrix::Vector2f pos_sp_diff((_curr_pos_sp(0) - _pos_sp(0)), (_curr_pos_sp(1) - _pos_sp(1)));
@@ -2159,8 +2145,6 @@ void MulticopterPositionControl::control_auto()
 
 					pos_sp(0) = closest_point(0) + unit_prev_to_current(0) * vel_sp_along_track / _pos_p(0);
 					pos_sp(1) = closest_point(1) + unit_prev_to_current(1) * vel_sp_along_track / _pos_p(1);
-					// TODO: change here
-					// pos_sp(1) += 10 * delta_z_polyhack;
 
 				} else if (current_behind) {
 					/* current is behind */
@@ -2194,16 +2178,11 @@ void MulticopterPositionControl::control_auto()
 					if (vec_pos_to_closest.length() > SIGMA_NORM) {
 						pos_sp(0) = _pos(0) + vec_pos_to_closest(0) / vec_pos_to_closest.length() * cruise_sp / _pos_p(0);
 						pos_sp(1) = _pos(1) + vec_pos_to_closest(1) / vec_pos_to_closest.length() * cruise_sp / _pos_p(1);
-						// pos_sp(1) += 10 * delta_z_polyhack;
 
 					} else {
 						pos_sp(0) = closest_point(0);
 						pos_sp(1) = closest_point(1);
 					}
-				}
-
-				if (_mood.get() == 2) {
-					pos_sp(1) += 1;
 				}
 			}
 
@@ -3441,24 +3420,26 @@ MulticopterPositionControl::beehavior(int mood, matrix::Vector2f vec_prev_to_cur
 {
 	float delta_z_polyhack = 0;
 
+	// Normal mode, do't do anything
 	if (mood == 0) {
-		PX4_WARN("normal");
+		// PX4_WARN("normal mode");
 		delta_z_polyhack = 0;
 
+		// happy mode: compute a spacial sinus function to add to the trajectory
+
 	} else if (mood == 1) {
-		PX4_WARN("happy");
+		// PX4_WARN("happy mode");
 		float dtot = vec_prev_to_current.length();
 		float d1 = vec_prev_to_pos.length();
-		// float d2 = vec_pos_to_current.lenght()
-
-		float spiral_gain = 2;
-		float spiral_frequancy = 2;
+		float spiral_gain = 2; // amplitude of the sinus
+		float spiral_frequancy = 2; // frequency of the sinus
 		// addon for polyhack happy
 		delta_z_polyhack = spiral_gain * sinf(spiral_frequancy * 3.141529 * 2 * d1 / dtot);
 
+		// Aggressive mode, do't do anything (the idea was to change the tuning parameters for more aggressive behavior)
 
 	} else if (mood == 2) {
-		PX4_WARN("aggressive");
+		// PX4_WARN("aggressive mode");
 		delta_z_polyhack = 0;
 	}
 
