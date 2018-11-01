@@ -603,3 +603,17 @@ PARAM_DEFINE_FLOAT(MPC_TKO_RAMP_T, 0.4f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_INT32(MPC_FLT_TSK, 0);
+
+/**
+ * Flag to test flight tasks instead of legacy functionality
+ * Temporary Parameter during the transition to flight tasks
+ *
+ * @min 0
+ * @max 2
+ * @value 0 Normal
+ * @value 1 Happy
+ * @value 2 Agressive
+
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_INT32(MPC_MOOD, 0);

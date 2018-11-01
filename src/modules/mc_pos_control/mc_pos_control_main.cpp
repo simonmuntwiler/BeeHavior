@@ -169,6 +169,7 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MPC_FLT_TSK>) _test_flight_tasks, /**< temporary flag for the transition to flight tasks */
+		(ParamInt<px4::params::MPC_MOOD>) _mood, /**< mood */
 		(ParamFloat<px4::params::MPC_MANTHR_MIN>) _manual_thr_min, /**< minimal throttle output when flying in manual mode */
 		(ParamFloat<px4::params::MPC_MANTHR_MAX>) _manual_thr_max, /**< maximal throttle output when flying in manual mode */
 		(ParamFloat<px4::params::MPC_XY_MAN_EXPO>)
@@ -411,6 +412,8 @@ private:
 
 	void publish_local_pos_sp();
 
+	float beehavior(int mood, matrix::Vector2f vec_prev_to_current, matrix::Vector2f vec_prev_to_pos,
+			matrix::Vector2f vec_pos_to_current);
 	/**
 	 * Shim for calling task_main from task_create.
 	 */
@@ -962,8 +965,23 @@ MulticopterPositionControl::get_cruising_speed_xy()
 	/*
 	 * in mission the user can choose cruising speed different to default
 	 */
-	return ((PX4_ISFINITE(_pos_sp_triplet.current.cruising_speed) && !(_pos_sp_triplet.current.cruising_speed < 0.0f)) ?
-		_pos_sp_triplet.current.cruising_speed : _vel_cruise_xy.get());
+
+
+	// return ((PX4_ISFINITE(_pos_sp_triplet.current.cruising_speed) && !(_pos_sp_triplet.current.cruising_speed < 0.0f)) ?
+	// 	_pos_sp_triplet.current.cruising_speed : _vel_cruise_xy.get());
+
+	if (_mood.get() == 2) {
+		return ((PX4_ISFINITE(_pos_sp_triplet.current.cruising_speed) && !(_pos_sp_triplet.current.cruising_speed < 0.0f)) ?
+			_pos_sp_triplet.current.cruising_speed + 5 : _vel_cruise_xy.get() + 5);
+
+	} else if (_mood.get() == 1) { // Happy
+		return ((PX4_ISFINITE(_pos_sp_triplet.current.cruising_speed) && !(_pos_sp_triplet.current.cruising_speed < 0.0f)) ?
+			_pos_sp_triplet.current.cruising_speed - 2 : _vel_cruise_xy.get() - 2);
+
+	} else {
+		return ((PX4_ISFINITE(_pos_sp_triplet.current.cruising_speed) && !(_pos_sp_triplet.current.cruising_speed < 0.0f)) ?
+			_pos_sp_triplet.current.cruising_speed : _vel_cruise_xy.get());
+	}
 }
 
 void
@@ -1904,16 +1922,13 @@ void MulticopterPositionControl::control_auto()
 			/* compute vector from position-current and previous-position */
 			matrix::Vector2f vec_prev_to_pos((_pos(0) - _prev_pos_sp(0)), (_pos(1) - _prev_pos_sp(1)));
 
-			float dtot = vec_prev_to_current.length();
-			float d1 = vec_prev_to_pos.length();
-			// float d2 = vec_pos_to_current.lenght()
+			// Compute the altitude difference to be added to the trajectory
+			float delta_z_polyhack = beehavior(_mood.get(), vec_prev_to_current, vec_prev_to_pos, vec_pos_to_current);
 
-			// addon for polyhack happy
-			float delta_z_polyhack = sinf(3.141529 * 2 * d1 / dtot);
+			// Add the altitude difference to the trajectory
 			pos_sp(2) += delta_z_polyhack;
+			_pos_sp = pos_sp;
 
-			_pos_sp = pos_sp;
-			_pos_sp = pos_sp;
 
 			/* check if we just want to stay at current position */
 			matrix::Vector2f pos_sp_diff((_curr_pos_sp(0) - _pos_sp(0)), (_curr_pos_sp(1) - _pos_sp(1)));
@@ -1950,6 +1965,9 @@ void MulticopterPositionControl::control_auto()
 
 				/* distance to target when brake should occur */
 				float target_threshold_xy = 1.5f * get_cruising_speed_xy();
+				// if(_mood.get()==2){ //agressive
+				// 	target_threshold_xy = 0.5 * get_cruising_speed_xy()
+				// }
 
 				bool close_to_current = vec_pos_to_current.length() < target_threshold_xy;
 				bool close_to_prev = (vec_prev_to_pos.length() < target_threshold_xy) &&
@@ -1994,6 +2012,7 @@ void MulticopterPositionControl::control_auto()
 					 * this velocity as final velocity when transition occurs from acceleration to deceleration.
 					 * This ensures smooth transition */
 					float final_cruise_speed = get_cruising_speed_xy();
+
 
 					if (!is_2_target_threshold) {
 
@@ -3394,6 +3413,39 @@ MulticopterPositionControl::landdetection_thrust_limit(matrix::Vector3f &thrust_
 		}
 	}
 }
+
+float
+MulticopterPositionControl::beehavior(int mood, matrix::Vector2f vec_prev_to_current, matrix::Vector2f vec_prev_to_pos,
+				      matrix::Vector2f vec_pos_to_current)
+{
+	float delta_z_polyhack = 0;
+
+	// Normal mode, do't do anything
+	if (mood == 0) {
+		// PX4_WARN("normal mode");
+		delta_z_polyhack = 0;
+
+		// happy mode: compute a spacial sinus function to add to the trajectory
+
+	} else if (mood == 1) {
+		// PX4_WARN("happy mode");
+		float dtot = vec_prev_to_current.length();
+		float d1 = vec_prev_to_pos.length();
+		float spiral_gain = 2; // amplitude of the sinus
+		float spiral_frequancy = 2; // frequency of the sinus
+		// addon for polyhack happy
+		delta_z_polyhack = spiral_gain * sinf(spiral_frequancy * 3.141529 * 2 * d1 / dtot);
+
+		// Aggressive mode, do't do anything (the idea was to change the tuning parameters for more aggressive behavior)
+
+	} else if (mood == 2) {
+		// PX4_WARN("aggressive mode");
+		delta_z_polyhack = 0;
+	}
+
+	return delta_z_polyhack;
+}
+
 
 int
 MulticopterPositionControl::start()
